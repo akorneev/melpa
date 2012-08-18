@@ -66,6 +66,20 @@
   "List of already-built packages, in the standard package.el format.")
 
 ;;; Internal functions
+(defun pb/delete-directory (dir)
+  "Recursively delete directory DIR"
+  (cond ((eq emacs-major-version 24) (delete-directory dir t nil))
+	(t (shell-command (concat "rm -rf " dir)))))
+
+(defun pb/delete-file (filename)
+  "Delete file named FILENAME"
+  (cond ((eq emacs-major-version 24) (delete-file filename nil))
+	(t (delete-file filename))))
+
+(defun pb/copy-directory (from to)
+  "Copy direcory named FROM to TO"
+  (cond ((eq emacs-major-version 24) copy-directory from to)
+	(t (shell-command (concat "cp -rf " from " " to)))))
 
 (defun pb/slurp-file (file-name)
   "Return the contents of FILE-NAME as a string, or nil if no such file exists."
@@ -208,7 +222,7 @@ seconds; the server cuts off after 10 requests in 20 seconds.")
         (pb/run-process dir "darcs" "pull"))
        (t
         (when (file-exists-p dir)
-          (delete-directory dir t nil))
+          (pb/delete-directory dir))
         (pb/princ-checkout repo dir)
         (pb/run-process nil "darcs" "get" repo dir)))
       (apply 'pb/run-process dir "darcs" "changes" "--max-count" "1"
@@ -246,7 +260,7 @@ seconds; the server cuts off after 10 requests in 20 seconds.")
         (pb/run-process dir "svn" "up"))
        (t
         (when (file-exists-p dir)
-          (delete-directory dir t nil))
+          (pb/delete-directory dir))
         (pb/princ-checkout repo dir)
         (pb/run-process nil "svn" "checkout" repo dir)))
       (apply 'pb/run-process dir "svn" "info"
@@ -321,7 +335,7 @@ Return a cons cell whose `car' is the root and whose `cdr' is the repository."
         (pb/run-process dir "git" "remote" "update"))
        (t
         (when (file-exists-p dir)
-          (delete-directory dir t nil))
+          (pb/delete-directory dir))
         (pb/princ-checkout repo dir)
         (pb/run-process nil "git" "clone" repo dir)))
       (pb/run-process dir "git" "reset" "--hard"
@@ -356,7 +370,7 @@ Return a cons cell whose `car' is the root and whose `cdr' is the repository."
         (pb/run-process dir "bzr" "merge"))
        (t
         (when (file-exists-p dir)
-          (delete-directory dir t nil))
+          (pb/delete-directory dir))
         (pb/princ-checkout repo dir)
         (pb/run-process nil "bzr" "branch" repo dir)))
       (apply 'pb/run-process dir "bzr" "log" "-l1"
@@ -381,7 +395,7 @@ Return a cons cell whose `car' is the root and whose `cdr' is the repository."
         (pb/run-process dir "hg" "update"))
        (t
         (when (file-exists-p dir)
-          (delete-directory dir t nil))
+          (pb/delete-directory dir))
         (pb/princ-checkout repo dir)
         (pb/run-process nil "hg" "clone" repo dir)))
       (apply 'pb/run-process dir "hg" "log" "--style" "compact" "-l1"
@@ -518,7 +532,7 @@ of the same-named package which is to be kept."
   (print (format "Removing archive: %s" archive-entry))
   (let ((archive-file (pb/archive-file-name archive-entry)))
     (when (file-exists-p archive-file)
-      (delete-file archive-file)))
+      (pb/delete-file archive-file)))
   (setq package-build-archive-alist
         (remove archive-entry package-build-archive-alist))
   (pb/dump-archive-contents))
@@ -578,7 +592,7 @@ FILES is a list of (SOURCE . DEST) relative filepath pairs."
     (copy-file file newname))
    ((file-directory-p file)
     (message "%s => %s" file newname)
-    (copy-directory file newname))))
+    (pb/copy-directory file newname))))
 
 
 (defun pb/package-name-completing-read ()
@@ -620,7 +634,7 @@ FILES is a list of (SOURCE . DEST) relative filepath pairs."
                           version
                           cfg)))
           (when (file-exists-p pkg-target)
-            (delete-file pkg-target t))
+            (pb/delete-file pkg-target))
           (copy-file pkg-source pkg-target)
           (pb/add-to-archive-contents pkg-info 'single)))
        ((< 1 (length  files))
@@ -640,7 +654,7 @@ FILES is a list of (SOURCE . DEST) relative filepath pairs."
                  cfg)))
 
           (when (file-exists-p pkg-dir)
-            (delete-directory pkg-dir t nil))
+            (pb/delete-directory pkg-dir))
 
           (pb/copy-package-files files pkg-cwd pkg-dir)
 
@@ -657,7 +671,7 @@ FILES is a list of (SOURCE . DEST) relative filepath pairs."
            pkg-dir
            (delete-dups (append (mapcar 'cdr files) (list pkg-file))))
 
-          (delete-directory pkg-dir t nil)
+          (pb/delete-directory pkg-dir)
           (pb/add-to-archive-contents pkg-info 'tar)))
 
        (t (error "Unable to find files matching recipe patterns")))
