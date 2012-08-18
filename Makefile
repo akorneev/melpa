@@ -5,7 +5,7 @@ HTMLDIR := ./html
 WORKDIR := ./working
 EMACS   := emacs
 
-EVAL := $(EMACS) --no-site-file --batch -l package-build.el --eval
+EVAL := $(EMACS) --no-site-file --batch -l package.el -l package-build.el --eval
 
 
 all: build json index
